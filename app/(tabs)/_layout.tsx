@@ -1,35 +1,82 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
-
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { Tabs } from "expo-router";
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarActiveTintColor: "black",
+        tabBarInactiveTintColor: "gray",
+        tabBarStyle: {
+          height: 70,
+        },
         headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+      }}
+      initialRouteName="calc"
+    >
       <Tabs.Screen
-        name="index"
+        name="food"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: "Alimentos",
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons
+              name={focused ? "fast-food" : "fast-food-outline"}
+              color={color}
+            />
+          ),
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="calc"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: "Calcular",
+          tabBarIcon: ({ focused, color }) => (
+            <TabBarCircle focused={focused} />
+          ),
+          tabBarLabelStyle: { display: 'none' },
+        }}
+      />
+      <Tabs.Screen
+        name="config"
+        options={{
+          title: "Configurações",
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons
+              name={focused ? "settings" : "settings-outline"}
+              color={color}
+            />
+          ),
         }}
       />
     </Tabs>
+  );
+}
+
+import { View } from "react-native";
+function TabBarCircle({ focused }: { focused: boolean }) {
+  return (
+    <View
+      style={{
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: focused ? '#4FC3F7' : '#B3E5FC',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: focused ? 3 : 0,
+        borderColor: focused ? '#0288D1' : 'transparent',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 8,
+      }}
+    >
+      <Ionicons
+        name={focused ? "calculator" : "calculator-outline"}
+        color={focused ? 'white' : '#0288D1'}
+        size={32}
+      />
+    </View>
   );
 }
