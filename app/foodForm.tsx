@@ -1,4 +1,4 @@
-import { Food, Unit, addFood, getFoodById, updateFood } from "@/services/mockFoodService";
+import { Unit, addFood, getFoodById, updateFood } from "@/services/mockFoodService";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -29,14 +29,22 @@ export default function FoodForm() {
   useEffect(() => {
     if (params.id) {
       loadFood(params.id as string);
+    } else if (params.copyFrom) {
+      // Carrega dados do alimento original para copiar
+      loadFood(params.copyFrom as string, true);
+    } else if (params.name || params.baseCarbs) {
+      // Preenche com dados dos parâmetros (para cópia)
+      if (params.name) setName(params.name as string);
+      if (params.baseCarbs) setBaseCarbs(params.baseCarbs as string);
     }
-  }, [params.id]);
+  }, [params.id, params.copyFrom]);
 
-  async function loadFood(id: string) {
+  async function loadFood(id: string, isCopy = false) {
     try {
       const food = await getFoodById(id);
       if (food) {
-        setName(food.name);
+        // Se for cópia, adiciona " (cópia)" ao nome e não preenche o ID
+        setName(isCopy ? `${food.name} (cópia)` : food.name);
         setBaseCarbs(food.baseCarbs.toString());
         setUnits(food.units.map(u => ({
           ...u,
@@ -58,22 +66,29 @@ export default function FoodForm() {
       Alert.alert("Preencha todas as unidades corretamente!");
       return;
     }
+    const parsedBase = Number(baseCarbs);
+    if (isNaN(parsedBase)) {
+      Alert.alert('Preencha o campo de carboidratos com um número válido!');
+      return;
+    }
 
     try {
-      const foodData: Food = {
-        id: params.id as string || '0',
-        name,
-        baseCarbs: Number(baseCarbs),
-        units: units.map(u => ({
-          ...u,
-          grams: Number(u.grams)
-        }))
-      };
+      // Prepare units for DB calls
+      const unitsForInsert = units.map(u => ({
+        name: u.name,
+        grams: Number(u.grams)
+      }));
 
       if (params.id) {
-        await updateFood(foodData);
+        // updateFood expects (id, name, baseCarbs, units)
+        await updateFood(params.id as string, name, parsedBase, units.map(u => ({
+          id: u.id,
+          name: u.name,
+          grams: Number(u.grams)
+        })));
       } else {
-        await addFood(foodData);
+        // addFood expects (name, baseCarbs, units)
+        await addFood(name, parsedBase, unitsForInsert);
       }
 
       Alert.alert(
@@ -115,26 +130,39 @@ export default function FoodForm() {
       </Text>
 
       <Text style={styles.sectionTitle}>Informações Básicas</Text>
+      
+      <Text style={styles.fieldLabel}>Nome do alimento</Text>
       <TextInput
         style={styles.input}
-        placeholder="Nome do alimento"
+        placeholder="Ex: Arroz branco, Batata doce..."
         value={name}
         onChangeText={setName}
       />
 
+      <Text style={styles.fieldLabel}>Carboidratos por 100g</Text>
       <TextInput
         style={styles.input}
-        placeholder="Carboidratos em 100g"
+        placeholder="Ex: 28.5"
         value={baseCarbs}
         onChangeText={setBaseCarbs}
         keyboardType="numeric"
       />
 
       <Text style={styles.sectionTitle}>Unidades de Medida</Text>
+      <Text style={styles.fieldDescription}>
+        Defina as unidades de medida para este alimento (colher, xícara, unidade, etc.)
+      </Text>
       
       <FlatList
         data={units}
         keyExtractor={item => item.id}
+        ListHeaderComponent={
+          <View style={styles.unitHeaderContainer}>
+            <Text style={[styles.unitHeaderText, styles.nameHeaderText]}>Nome</Text>
+            <Text style={[styles.unitHeaderText, styles.gramsHeaderText]}>Peso (g)</Text>
+            <View style={styles.headerSpacer} />
+          </View>
+        }
         renderItem={({ item }) => (
           <View style={styles.unitContainer}>
             <TextInput
@@ -198,6 +226,44 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 16,
     marginBottom: 8,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 4,
+    marginTop: 8,
+  },
+  fieldDescription: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 12,
+    fontStyle: 'italic',
+  },
+  unitHeaderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+  },
+  unitHeaderText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+    textTransform: 'uppercase',
+  },
+  nameHeaderText: {
+    flex: 2,
+    marginRight: 8,
+  },
+  gramsHeaderText: {
+    flex: 1,
+    marginRight: 8,
+  },
+  headerSpacer: {
+    width: 40, // Espaço para o botão de remover
   },
   input: {
     height: 40,

@@ -1,6 +1,15 @@
-import { useEffect, useState } from "react";
+import FoodSearch from "@/components/FoodSearch";
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useEffect, useState } from "react";
 import { FlatList, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Food, getAllFoods } from "../../services/mockFoodService";
+import {
+  InsulinSettings,
+  calculateCorrectionInsulin,
+  calculateInsulinForCarbs,
+  getInsulinSettings,
+  roundInsulinToIncrement
+} from "../../services/settingsService";
 
 interface SelectedFood {
   food: Food;
@@ -8,38 +17,39 @@ interface SelectedFood {
   quantity: number;
 }
 
-interface InsulinSettings {
-  carbsPerInsulin: string;
-  correctionFactor: string;
-  insulinIncrement: string;
-}
-
-const SETTINGS_KEY = '@insulin_settings';
-
 export default function Calc() {
   const [availableFoods, setAvailableFoods] = useState<Food[]>([]);
   const [selectedFoods, setSelectedFoods] = useState<SelectedFood[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [selectedFood, setSelectedFood] = useState<Food | null>(null);
-  const [selectedUnitId, setSelectedUnitId] = useState<string>("");
-  const [quantity, setQuantity] = useState<string>("");
   const [totalCarbs, setTotalCarbs] = useState(0);
   const [currentGlucose, setCurrentGlucose] = useState<string>("");
   const [targetGlucose, setTargetGlucose] = useState<string>("");
   const [settings, setSettings] = useState<InsulinSettings>({
-    carbsPerInsulin: "15",
-    correctionFactor: "40",
-    insulinIncrement: "1"
+    carbsPerInsulin: 15,
+    correctionFactor: 40,
+    insulinIncrement: 1
   });
 
   useEffect(() => {
     loadFoods();
+    loadSettings();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadSettings();
+    }, [])
+  );
 
   useEffect(() => {
     calculateTotalCarbs();
   }, [selectedFoods]);
+
+  const loadSettings = async () => {
+    const loadedSettings = await getInsulinSettings();
+    setSettings(loadedSettings);
+  };
 
   const loadFoods = async () => {
     try {
@@ -62,27 +72,41 @@ export default function Calc() {
     setTotalCarbs(total);
   };
 
-  const handleAddFood = () => {
-    if (selectedFood && selectedUnitId && quantity) {
-      const newFood: SelectedFood = {
-        food: selectedFood,
-        unitId: selectedUnitId,
-        quantity: Number(quantity)
-      };
-      setSelectedFoods(prev => [...prev, newFood]);
-      resetModal();
-    }
+  const handleSelectFoodFromSearch = (food: Food) => {
+    // Seleciona automaticamente a primeira unidade e quantidade 1
+    const firstUnit = food.units[0];
+    const newFood: SelectedFood = {
+      food: food,
+      unitId: firstUnit.id,
+      quantity: 1
+    };
+    setSelectedFoods(prev => [...prev, newFood]);
+    // Não fecha o modal - usuário pode adicionar múltiplos alimentos
+  };
+
+  const handleDeselectFood = (foodId: string) => {
+    // Remove todos os itens com esse foodId
+    setSelectedFoods(prev => prev.filter(item => item.food.id !== foodId));
   };
 
   const handleRemoveFood = (index: number) => {
     setSelectedFoods(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handleUpdateUnit = (index: number, unitId: string) => {
+    setSelectedFoods(prev => prev.map((item, i) => 
+      i === index ? { ...item, unitId } : item
+    ));
+  };
+
+  const handleUpdateQuantity = (index: number, quantity: number) => {
+    setSelectedFoods(prev => prev.map((item, i) => 
+      i === index ? { ...item, quantity } : item
+    ));
+  };
+
   const resetModal = () => {
     setModalVisible(false);
-    setSelectedFood(null);
-    setSelectedUnitId("");
-    setQuantity("");
   };
   return (
     <View style={styles.container}>
@@ -91,11 +115,23 @@ export default function Calc() {
         <Text style={styles.h1}>Glicemia</Text>
         <View style={styles.linha}>
           <Text>Atual (mg/dL)</Text>
-          <TextInput style={styles.imput} placeholder="Ex: 70" keyboardType="numeric"/>
+          <TextInput 
+            style={styles.imput} 
+            placeholder="Ex: 70" 
+            keyboardType="numeric"
+            value={currentGlucose}
+            onChangeText={setCurrentGlucose}
+          />
         </View>
         <View style={styles.linha}>
           <Text>Alvo (mg/dL)</Text>
-          <TextInput style={styles.imput} placeholder="Ex: 120" keyboardType="numeric"/>
+          <TextInput 
+            style={styles.imput} 
+            placeholder="Ex: 120" 
+            keyboardType="numeric"
+            value={targetGlucose}
+            onChangeText={setTargetGlucose}
+          />
         </View>
       </View>
       {/*Alimento*/}
@@ -128,9 +164,57 @@ export default function Calc() {
                     <Text style={styles.removeButtonText}>×</Text>
                   </TouchableOpacity>
                 </View>
+                <View style={styles.foodControlsRow}>
+                  <View style={styles.controlGroup}>
+                    <Text style={styles.controlLabel}>Unidade:</Text>
+                    <View style={styles.pickerContainer}>
+                      {item.food.units.map((u) => (
+                        <TouchableOpacity
+                          key={u.id}
+                          style={[
+                            styles.unitButton,
+                            item.unitId === u.id && styles.unitButtonSelected
+                          ]}
+                          onPress={() => handleUpdateUnit(index, u.id)}
+                        >
+                          <Text style={[
+                            styles.unitButtonText,
+                            item.unitId === u.id && styles.unitButtonTextSelected
+                          ]}>
+                            {u.name}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                  <View style={styles.controlGroup}>
+                    <Text style={styles.controlLabel}>Qtd:</Text>
+                    <TextInput
+                      style={styles.quantityInputSmall}
+                      value={item.quantity.toString()}
+                      onChangeText={(text) => {
+                        // Permite edição livre, inclusive texto vazio
+                        if (text === '') {
+                          handleUpdateQuantity(index, 0);
+                        } else {
+                          const num = Number(text);
+                          if (!isNaN(num)) {
+                            handleUpdateQuantity(index, num);
+                          }
+                        }
+                      }}
+                      onBlur={() => {
+                        // Ao perder o foco, garante que seja pelo menos 1
+                        if (item.quantity <= 0) {
+                          handleUpdateQuantity(index, 1);
+                        }
+                      }}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                </View>
                 <View style={styles.foodDetails}>
-                  <Text>{item.quantity}x {unit?.name}</Text>
-                  <Text style={styles.carbsValue}>{totalFoodCarbs.toFixed(1)}g carbs</Text>
+                  <Text style={styles.carbsValue}>{totalFoodCarbs.toFixed(1)}g carboidratos</Text>
                 </View>
               </View>
             );
@@ -141,87 +225,32 @@ export default function Calc() {
 
         <Modal
           animationType="slide"
-          transparent={true}
+          transparent={false}
           visible={modalVisible}
           onRequestClose={resetModal}
         >
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
+          <View style={styles.modalFullScreen}>
+            <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Adicionar Alimento</Text>
-              
-              <View style={styles.modalSection}>
-                <Text style={styles.modalLabel}>Selecione o Alimento:</Text>
-                <FlatList
-                  data={availableFoods}
-                  horizontal={true}
-                  showsHorizontalScrollIndicator={false}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      style={[
-                        styles.foodOption,
-                        selectedFood?.id === item.id && styles.foodOptionSelected
-                      ]}
-                      onPress={() => setSelectedFood(item)}
-                    >
-                      <Text style={styles.foodOptionText}>{item.name}</Text>
-                    </TouchableOpacity>
-                  )}
-                  keyExtractor={item => item.id}
-                />
-              </View>
-
-              {selectedFood && (
-                <View style={styles.modalSection}>
-                  <Text style={styles.modalLabel}>Unidade de Medida:</Text>
-                  <View style={styles.unitsContainer}>
-                    {selectedFood.units.map((unit) => (
-                      <TouchableOpacity
-                        key={unit.id}
-                        style={[
-                          styles.unitOption,
-                          selectedUnitId === unit.id && styles.unitOptionSelected
-                        ]}
-                        onPress={() => setSelectedUnitId(unit.id)}
-                      >
-                        <Text style={styles.unitOptionText}>{unit.name}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-              )}
-
-              {selectedUnitId && (
-                <View style={styles.modalSection}>
-                  <Text style={styles.modalLabel}>Quantidade:</Text>
-                  <TextInput
-                    style={styles.quantityInput}
-                    value={quantity}
-                    onChangeText={setQuantity}
-                    keyboardType="numeric"
-                    placeholder="Ex: 2"
-                  />
-                </View>
-              )}
-
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.modalButtonCancel]}
-                  onPress={resetModal}
-                >
-                  <Text style={styles.modalButtonText}>Cancelar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.modalButton,
-                    styles.modalButtonConfirm,
-                    (!selectedFood || !selectedUnitId || !quantity) && styles.modalButtonDisabled
-                  ]}
-                  onPress={handleAddFood}
-                  disabled={!selectedFood || !selectedUnitId || !quantity}
-                >
-                  <Text style={styles.modalButtonText}>Adicionar</Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity onPress={resetModal} style={styles.closeButton}>
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.modalBody}>
+              <FoodSearch 
+                foods={availableFoods}
+                onSelectFood={handleSelectFoodFromSearch}
+                onDeselectFood={handleDeselectFood}
+                selectedFoodIds={selectedFoods.map(f => f.food.id)}
+              />
+            </View>
+            <View style={styles.modalFooter}>
+              <TouchableOpacity 
+                style={styles.doneButton}
+                onPress={resetModal}
+              >
+                <Text style={styles.doneButtonText}>Concluir</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </Modal>
@@ -235,15 +264,33 @@ export default function Calc() {
         </View>
         <View style={styles.linha}>
           <Text>Insulina para Alimentos:</Text>
-          <Text style={styles.max2}>{(totalCarbs / 15).toFixed(1)}U</Text>
+          <Text style={styles.max2}>
+            {calculateInsulinForCarbs(totalCarbs, settings.carbsPerInsulin).toFixed(1)}U
+          </Text>
         </View>
         <View style={styles.linha}>
           <Text>Insulina para Correção:</Text>
-          <Text style={styles.max2}>0.00</Text>
+          <Text style={styles.max2}>
+            {calculateCorrectionInsulin(
+              Number(currentGlucose) || 0,
+              Number(targetGlucose) || 0,
+              settings.correctionFactor
+            ).toFixed(1)}U
+          </Text>
         </View>
         <View style={styles.linha}>
           <Text>Insulina Total:</Text>
-          <Text style={styles.max1}>{(totalCarbs / 15).toFixed(1)}U</Text>
+          <Text style={styles.max1}>
+            {roundInsulinToIncrement(
+              calculateInsulinForCarbs(totalCarbs, settings.carbsPerInsulin) +
+              calculateCorrectionInsulin(
+                Number(currentGlucose) || 0,
+                Number(targetGlucose) || 0,
+                settings.correctionFactor
+              ),
+              settings.insulinIncrement
+            ).toFixed(1)}U
+          </Text>
         </View>
       </View>
     </View>
@@ -321,95 +368,112 @@ const styles = StyleSheet.create({
     color: "#FF3B30",
     fontWeight: "bold",
   },
-  modalContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
-  modalContent: {
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 20,
-    width: "90%",
-    maxHeight: "80%",
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  modalSection: {
-    marginBottom: 20,
-  },
-  modalLabel: {
-    fontSize: 16,
-    fontWeight: "600",
+  foodControlsRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 8,
     marginBottom: 8,
   },
-  foodOption: {
-    backgroundColor: "#f0f0f0",
-    padding: 10,
-    borderRadius: 8,
-    marginRight: 10,
+  controlGroup: {
+    flex: 1,
   },
-  foodOptionSelected: {
-    backgroundColor: "#007AFF",
+  controlLabel: {
+    fontSize: 12,
+    color: "#666",
+    marginBottom: 4,
   },
-  foodOptionText: {
-    fontSize: 14,
-    color: "#000",
-  },
-  unitsContainer: {
+  pickerContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 4,
   },
-  unitOption: {
+  unitButton: {
     backgroundColor: "#f0f0f0",
+    paddingHorizontal: 8,
+    paddingVertical: 6,
     borderRadius: 6,
-    padding: 8,
-    marginRight: 8,
-    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#ddd",
   },
-  unitOptionSelected: {
+  unitButtonSelected: {
     backgroundColor: "#007AFF",
+    borderColor: "#007AFF",
   },
-  unitOptionText: {
-    fontSize: 14,
+  unitButtonText: {
+    fontSize: 12,
+    color: "#333",
   },
-  quantityInput: {
+  unitButtonTextSelected: {
+    color: "white",
+    fontWeight: "600",
+  },
+  quantityInputSmall: {
     borderWidth: 1,
     borderColor: "#ccc",
     borderRadius: 6,
     padding: 8,
     fontSize: 16,
+    textAlign: "center",
+    backgroundColor: "white",
   },
-  modalButtons: {
+  modalFullScreen: {
+    flex: 1,
+    backgroundColor: "white",
+    paddingTop: 40,
+  },
+  modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 20,
+    alignItems: "center",
+    marginBottom: 16,
+    paddingBottom: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0e0e0",
   },
-  modalButton: {
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: "bold",
+  },
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#f0f0f0",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  closeButtonText: {
+    fontSize: 24,
+    color: "#666",
+    fontWeight: "300",
+  },
+  modalBody: {
     flex: 1,
-    padding: 12,
-    borderRadius: 8,
-    marginHorizontal: 8,
+    paddingHorizontal: 16,
   },
-  modalButtonCancel: {
-    backgroundColor: "#FF3B30",
+  modalFooter: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    paddingBottom: 32,
+    borderTopWidth: 1,
+    borderTopColor: "#e0e0e0",
+    backgroundColor: "white",
   },
-  modalButtonConfirm: {
+  doneButton: {
     backgroundColor: "#007AFF",
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
-  modalButtonDisabled: {
-    backgroundColor: "#cccccc",
-  },
-  modalButtonText: {
+  doneButtonText: {
     color: "white",
-    textAlign: "center",
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "600",
   },
   subContainer: {

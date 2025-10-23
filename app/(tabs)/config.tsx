@@ -1,14 +1,6 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getInsulinSettings, saveInsulinSettings } from "@/services/settingsService";
 import { useEffect, useState } from "react";
 import { Alert, Button, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-
-interface InsulinSettings {
-  carbsPerInsulin: string;
-  correctionFactor: string;
-  insulinIncrement: string;
-}
-
-const SETTINGS_KEY = '@insulin_settings';
 
 export default function Config() {
   const [carbsPerInsulin, setCarbsPerInsulin] = useState("");
@@ -21,13 +13,10 @@ export default function Config() {
 
   async function loadSettings() {
     try {
-      const settings = await AsyncStorage.getItem(SETTINGS_KEY);
-      if (settings) {
-        const parsed: InsulinSettings = JSON.parse(settings);
-        setCarbsPerInsulin(parsed.carbsPerInsulin);
-        setCorrectionFactor(parsed.correctionFactor);
-        setInsulinIncrement(parsed.insulinIncrement);
-      }
+      const settings = await getInsulinSettings();
+      setCarbsPerInsulin(settings.carbsPerInsulin.toString());
+      setCorrectionFactor(settings.correctionFactor.toString());
+      setInsulinIncrement(settings.insulinIncrement.toString());
     } catch (error) {
       console.error('Erro ao carregar configurações:', error);
     }
@@ -40,13 +29,12 @@ export default function Config() {
     }
 
     try {
-      const settings: InsulinSettings = {
-        carbsPerInsulin,
-        correctionFactor,
-        insulinIncrement
-      };
+      await saveInsulinSettings({
+        carbsPerInsulin: Number(carbsPerInsulin),
+        correctionFactor: Number(correctionFactor),
+        insulinIncrement: Number(insulinIncrement)
+      });
 
-      await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
       Alert.alert("Configurações salvas!", 
         `${carbsPerInsulin}g de carboidrato por 1U de insulina\n` +
         `Fator de correção: ${correctionFactor} mg/dL por 1U\n` +

@@ -1,12 +1,11 @@
-import { Food, getAllFoods } from "@/services/mockFoodService";
-import { Ionicons } from "@expo/vector-icons";
+import FoodSearch from "@/components/FoodSearch";
+import { Food, deleteFood, getAllFoods } from "@/services/mockFoodService";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, Button, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, Button, StyleSheet, Text, View } from "react-native";
 
 export default function FoodList() {
   const [foods, setFoods] = useState<Food[]>([]);
-  const [search, setSearch] = useState("");
   const router = useRouter();
 
   useEffect(() => {
@@ -23,10 +22,6 @@ export default function FoodList() {
     }
   }
 
-  const filteredFoods = foods.filter(f =>
-    f.name.toLowerCase().includes(search.toLowerCase())
-  );
-
   function handleEditFood(food: Food) {
     router.push({
       pathname: '/foodForm',
@@ -38,47 +33,52 @@ export default function FoodList() {
     });
   }
 
-  function renderFoodItem({ item }: { item: Food }) {
-    // Encontra a menor unidade para exibição
-    const smallestUnit = item.units.reduce((prev, curr) => 
-      prev.grams < curr.grams ? prev : curr
+  async function handleDeleteFood(food: Food) {
+    Alert.alert(
+      'Confirmar exclusão',
+      `Deseja realmente deletar "${food.name}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Deletar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteFood(food.id);
+              await loadFoods(); // Recarrega a lista
+              Alert.alert('Sucesso', 'Alimento deletado!');
+            } catch (error) {
+              console.error('Erro ao deletar alimento:', error);
+              Alert.alert('Erro', 'Não foi possível deletar o alimento');
+            }
+          },
+        },
+      ]
     );
+  }
 
-    const carbsInUnit = (smallestUnit.grams * item.baseCarbs) / 100;
-
-    return (
-      <TouchableOpacity
-        style={styles.foodItem}
-        onPress={() => handleEditFood(item)}
-      >
-        <View style={styles.foodInfo}>
-          <Text style={styles.foodName}>{item.name}</Text>
-          <Text style={styles.foodDetails}>
-            {carbsInUnit.toFixed(1)}g carbs / {smallestUnit.name}
-          </Text>
-        </View>
-        <Ionicons name="chevron-forward" size={24} color="#666" />
-      </TouchableOpacity>
-    );
+  function handleCopyFood(food: Food) {
+    // Navega para o formulário sem ID, mas com os dados preenchidos
+    // O usuário pode editar antes de salvar
+    router.push({
+      pathname: '/foodForm',
+      params: {
+        name: `${food.name} (cópia)`,
+        baseCarbs: food.baseCarbs.toString(),
+        copyFrom: food.id, // Pode ser usado para copiar as unidades também
+      },
+    });
   }
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Alimentos cadastrados</Text>
       
-      <TextInput
-        style={styles.search}
-        placeholder="Buscar alimento..."
-        value={search}
-        onChangeText={setSearch}
-      />
-
-      <FlatList
-        data={filteredFoods}
-        keyExtractor={item => item.id}
-        renderItem={renderFoodItem}
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
+      <FoodSearch 
+        foods={foods}
+        onSelectFood={handleEditFood}
+        onDeleteFood={handleDeleteFood}
+        onCopyFood={handleCopyFood}
       />
 
       <View style={styles.buttonContainer}>
@@ -103,39 +103,6 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "bold",
     marginBottom: 16,
-  },
-  search: {
-    height: 40,
-    backgroundColor: 'lightgray',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    marginBottom: 16,
-  },
-  list: {
-    flex: 1,
-  },
-  listContent: {
-    paddingVertical: 8,
-  },
-  foodItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  foodInfo: {
-    flex: 1,
-  },
-  foodName: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  foodDetails: {
-    fontSize: 14,
-    color: '#666',
   },
   buttonContainer: {
     marginTop: 16,
