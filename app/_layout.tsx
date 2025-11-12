@@ -32,7 +32,7 @@ export default function RootLayout() {
   if (!isReady) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color="#6B7FD7" />
         <Text style={styles.loadingText}>Inicializando...</Text>
       </View>
     );
@@ -40,6 +40,7 @@ export default function RootLayout() {
 
   return (
     <Stack>
+      <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="foodForm" options={{ headerShown: false }} />
     </Stack>
@@ -51,16 +52,16 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "white",
+    backgroundColor: "#F5F6FA",
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: "#666",
+    color: "#8B8FA8",
   },
   errorText: {
     fontSize: 16,
-    color: "#FF3B30",
+    color: "#FF9AA2",
     textAlign: "center",
     paddingHorizontal: 20,
   },

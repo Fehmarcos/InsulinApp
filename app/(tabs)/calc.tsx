@@ -4,11 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import { FlatList, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Food, getAllFoods } from "../../services/mockFoodService";
 import {
-  InsulinSettings,
-  calculateCorrectionInsulin,
-  calculateInsulinForCarbs,
-  getInsulinSettings,
-  roundInsulinToIncrement
+    InsulinSettings,
+    calculateCorrectionInsulin,
+    calculateInsulinForCarbs,
+    getInsulinSettings,
+    roundInsulinToIncrement
 } from "../../services/settingsService";
 
 interface SelectedFood {
@@ -193,23 +193,25 @@ export default function Calc() {
                       style={styles.quantityInputSmall}
                       value={item.quantity.toString()}
                       onChangeText={(text) => {
-                        // Permite edição livre, inclusive texto vazio
+                        // Permite edição livre, inclusive texto vazio e decimais
                         if (text === '') {
                           handleUpdateQuantity(index, 0);
                         } else {
-                          const num = Number(text);
+                          // Substitui vírgula por ponto para aceitar ambos os formatos
+                          const normalizedText = text.replace(',', '.');
+                          const num = parseFloat(normalizedText);
                           if (!isNaN(num)) {
                             handleUpdateQuantity(index, num);
                           }
                         }
                       }}
                       onBlur={() => {
-                        // Ao perder o foco, garante que seja pelo menos 1
+                        // Ao perder o foco, garante que seja pelo menos 0.1
                         if (item.quantity <= 0) {
                           handleUpdateQuantity(index, 1);
                         }
                       }}
-                      keyboardType="numeric"
+                      keyboardType="decimal-pad"
                     />
                   </View>
                 </View>
@@ -302,7 +304,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "offwhite",
+    backgroundColor: "#F5F6FA",
     paddingTop: 40,
   },
   headerContainer: {
@@ -313,10 +315,15 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   addButton: {
-    backgroundColor: "#007AFF",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
+    backgroundColor: "#6B7FD7",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+    shadowColor: "#6B7FD7",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   addButtonText: {
     color: "white",
@@ -331,21 +338,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
   },
   foodItem: {
-    backgroundColor: "#f8f8f8",
-    borderRadius: 8,
-    padding: 10,
-    marginVertical: 5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 14,
+    marginVertical: 6,
+    shadowColor: "#6B7FD7",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: "#E8E8F5",
   },
   foodHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 5,
+    marginBottom: 8,
   },
   foodDetails: {
     flexDirection: "row",
@@ -354,18 +363,19 @@ const styles = StyleSheet.create({
   },
   foodName: {
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "700",
+    color: "#2D3142",
   },
   carbsValue: {
     fontSize: 14,
-    color: "#666",
+    color: "#8B8FA8",
   },
   removeButton: {
     padding: 4,
   },
   removeButtonText: {
-    fontSize: 20,
-    color: "#FF3B30",
+    fontSize: 22,
+    color: "#FF9AA2",
     fontWeight: "bold",
   },
   foodControlsRow: {
@@ -379,29 +389,31 @@ const styles = StyleSheet.create({
   },
   controlLabel: {
     fontSize: 12,
-    color: "#666",
+    color: "#8B8FA8",
     marginBottom: 4,
+    fontWeight: "500",
   },
   pickerContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 4,
+    gap: 6,
   },
   unitButton: {
-    backgroundColor: "#f0f0f0",
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 6,
+    backgroundColor: "#F5F6FA",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: "#E8E8F5",
   },
   unitButtonSelected: {
-    backgroundColor: "#007AFF",
-    borderColor: "#007AFF",
+    backgroundColor: "#6B7FD7",
+    borderColor: "#6B7FD7",
   },
   unitButtonText: {
     fontSize: 12,
-    color: "#333",
+    color: "#2D3142",
+    fontWeight: "500",
   },
   unitButtonTextSelected: {
     color: "white",
@@ -409,16 +421,17 @@ const styles = StyleSheet.create({
   },
   quantityInputSmall: {
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 6,
-    padding: 8,
+    borderColor: "#E8E8F5",
+    borderRadius: 12,
+    padding: 10,
     fontSize: 16,
     textAlign: "center",
     backgroundColor: "white",
+    color: "#2D3142",
   },
   modalFullScreen: {
     flex: 1,
-    backgroundColor: "white",
+    backgroundColor: "#F5F6FA",
     paddingTop: 40,
   },
   modalHeader: {
@@ -429,23 +442,24 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
+    borderBottomColor: "#E8E8F5",
   },
   modalTitle: {
     fontSize: 24,
     fontWeight: "bold",
+    color: "#2D3142",
   },
   closeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#f0f0f0",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#E8E8F5",
     justifyContent: "center",
     alignItems: "center",
   },
   closeButtonText: {
     fontSize: 24,
-    color: "#666",
+    color: "#8B8FA8",
     fontWeight: "300",
   },
   modalBody: {
@@ -457,24 +471,24 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingBottom: 32,
     borderTopWidth: 1,
-    borderTopColor: "#e0e0e0",
-    backgroundColor: "white",
+    borderTopColor: "#E8E8F5",
+    backgroundColor: "#FFFFFF",
   },
   doneButton: {
-    backgroundColor: "#007AFF",
-    paddingVertical: 14,
-    borderRadius: 8,
+    backgroundColor: "#6B7FD7",
+    paddingVertical: 16,
+    borderRadius: 16,
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowColor: "#6B7FD7",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
     elevation: 5,
   },
   doneButtonText: {
     color: "white",
     fontSize: 18,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   subContainer: {
     justifyContent: "center",
@@ -483,47 +497,59 @@ const styles = StyleSheet.create({
     padding: 20,
     width: "96%",
     borderWidth: 1,
-    borderColor: "gray",
-    borderRadius: 10,
-    shadowColor: "#000",
+    borderColor: "#E8E8F5",
+    borderRadius: 20,
+    shadowColor: "#6B7FD7",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-    backgroundColor: "white",
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+    backgroundColor: "#FFFFFF",
   },
   h1: {
     alignSelf: "flex-start",
     fontSize: 20,
-    marginBottom: 10,
+    fontWeight: "700",
+    color: "#2D3142",
+    marginBottom: 12,
   },
   linha: {
     width: "100%",
     marginHorizontal: 20,
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 3,
-    borderColor: "gray",
+    padding: 12,
+    borderColor: "#E8E8F5",
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 14,
     marginBottom: 10,
     flexDirection: "row",
+    backgroundColor: "#F5F6FA",
   },
   max1: {
-    borderRadius: 10,
-    backgroundColor: "black",
+    borderRadius: 12,
+    backgroundColor: "#6B7FD7",
     color: "white",
-    padding: 5,
+    padding: 8,
+    paddingHorizontal: 12,
+    fontWeight: "700",
   },
   max2: {
-    borderRadius: 10,
-    backgroundColor: "lightgray",
-    padding: 5,
+    borderRadius: 12,
+    backgroundColor: "#E8E8F5",
+    color: "#2D3142",
+    padding: 8,
+    paddingHorizontal: 12,
+    fontWeight: "600",
   },
   imput: {
-    borderRadius: 10,
-    backgroundColor: "lightgray",
-    padding: 5,
+    borderRadius: 12,
+    backgroundColor: "white",
+    borderWidth: 1,
+    borderColor: "#E8E8F5",
+    padding: 8,
+    paddingHorizontal: 12,
     width: "30%",
+    color: "#2D3142",
   },
 });

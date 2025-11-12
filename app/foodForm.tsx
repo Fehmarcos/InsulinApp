@@ -4,7 +4,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   Alert,
-  Button,
   FlatList,
   StyleSheet,
   Text,
@@ -22,6 +21,8 @@ export default function FoodForm() {
   const params = useLocalSearchParams();
   const [name, setName] = useState("");
   const [baseCarbs, setBaseCarbs] = useState("");
+  const [portionSize, setPortionSize] = useState("100");
+  const [carbsInPortion, setCarbsInPortion] = useState("");
   const [units, setUnits] = useState<FormUnit[]>([
     { id: '1', name: '', grams: 0 }
   ]);
@@ -46,6 +47,9 @@ export default function FoodForm() {
         // Se for cópia, adiciona " (cópia)" ao nome e não preenche o ID
         setName(isCopy ? `${food.name} (cópia)` : food.name);
         setBaseCarbs(food.baseCarbs.toString());
+        // Calcula de volta para a porção de 100g
+        setPortionSize("100");
+        setCarbsInPortion(food.baseCarbs.toString());
         setUnits(food.units.map(u => ({
           ...u,
           id: u.id.toString()
@@ -58,7 +62,7 @@ export default function FoodForm() {
   }
 
   async function handleSave() {
-    if (!name || !baseCarbs) {
+    if (!name || !portionSize || !carbsInPortion) {
       Alert.alert("Preencha os dados básicos do alimento!");
       return;
     }
@@ -66,11 +70,22 @@ export default function FoodForm() {
       Alert.alert("Preencha todas as unidades corretamente!");
       return;
     }
-    const parsedBase = Number(baseCarbs);
-    if (isNaN(parsedBase)) {
-      Alert.alert('Preencha o campo de carboidratos com um número válido!');
+    
+    const parsedPortionSize = Number(portionSize);
+    const parsedCarbsInPortion = Number(carbsInPortion);
+    
+    if (isNaN(parsedPortionSize) || isNaN(parsedCarbsInPortion)) {
+      Alert.alert('Preencha os campos de carboidratos com números válidos!');
       return;
     }
+    
+    if (parsedPortionSize <= 0) {
+      Alert.alert('O tamanho da porção deve ser maior que zero!');
+      return;
+    }
+    
+    // Calcula o percentual de carboidratos por 100g
+    const parsedBase = (parsedCarbsInPortion / parsedPortionSize) * 100;
 
     try {
       // Prepare units for DB calls
@@ -139,14 +154,36 @@ export default function FoodForm() {
         onChangeText={setName}
       />
 
-      <Text style={styles.fieldLabel}>Carboidratos por 100g</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Ex: 28.5"
-        value={baseCarbs}
-        onChangeText={setBaseCarbs}
-        keyboardType="numeric"
-      />
+      <Text style={styles.fieldLabel}>Informação Nutricional</Text>
+      <Text style={styles.fieldDescription}>
+        Informe a quantidade de carboidratos em uma porção específica
+      </Text>
+      
+      <View style={styles.carbInputRow}>
+        <View style={styles.carbInputWrapper}>
+          <Text style={styles.carbInputLabel}>Em</Text>
+          <TextInput
+            style={styles.carbInput}
+            placeholder="100"
+            value={portionSize}
+            onChangeText={setPortionSize}
+            keyboardType="decimal-pad"
+          />
+          <Text style={styles.carbInputLabel}>g/ml</Text>
+        </View>
+        
+        <View style={styles.carbInputWrapper}>
+          <Text style={styles.carbInputLabel}>tem</Text>
+          <TextInput
+            style={styles.carbInput}
+            placeholder="28.5"
+            value={carbsInPortion}
+            onChangeText={setCarbsInPortion}
+            keyboardType="decimal-pad"
+          />
+          <Text style={styles.carbInputLabel}>g de carb</Text>
+        </View>
+      </View>
 
       <Text style={styles.sectionTitle}>Unidades de Medida</Text>
       <Text style={styles.fieldDescription}>
@@ -183,7 +220,7 @@ export default function FoodForm() {
                 style={styles.removeButton}
                 onPress={() => removeUnit(item.id)}
               >
-                <Ionicons name="trash-outline" size={24} color="red" />
+                <Ionicons name="trash-outline" size={24} color="#FF9AA2" />
               </TouchableOpacity>
             )}
           </View>
@@ -193,18 +230,21 @@ export default function FoodForm() {
             style={styles.addButton}
             onPress={addUnit}
           >
-            <Ionicons name="add-circle" size={32} color="#0288D1" />
+            <Ionicons name="add-circle" size={32} color="#6B7FD7" />
           </TouchableOpacity>
         }
       />
 
       <View style={styles.buttonContainer}>
-        <Button title="Salvar" onPress={handleSave} color="lightgray" />
-        <Button
-          title="Cancelar"
+        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+          <Text style={styles.saveButtonText}>Salvar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.cancelButton} 
           onPress={() => router.push("/food")}
-          color="lightgray"
-        />
+        >
+          <Text style={styles.cancelButtonText}>Cancelar</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -214,29 +254,31 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: 'white',
+    backgroundColor: '#F5F6FA',
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 24,
+    color: '#2D3142',
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     marginTop: 16,
     marginBottom: 8,
+    color: '#2D3142',
   },
   fieldLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#333',
+    color: '#2D3142',
     marginBottom: 4,
     marginTop: 8,
   },
   fieldDescription: {
     fontSize: 12,
-    color: '#666',
+    color: '#8B8FA8',
     marginBottom: 12,
     fontStyle: 'italic',
   },
@@ -245,13 +287,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
     paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
+    borderBottomWidth: 2,
+    borderBottomColor: '#E8E8F5',
   },
   unitHeaderText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#666',
+    color: '#8B8FA8',
     textTransform: 'uppercase',
   },
   nameHeaderText: {
@@ -263,14 +305,18 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   headerSpacer: {
-    width: 40, // Espaço para o botão de remover
+    width: 40,
   },
   input: {
-    height: 40,
-    backgroundColor: 'lightgray',
-    borderRadius: 8,
+    height: 48,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E8E8F5',
     paddingHorizontal: 12,
     marginBottom: 8,
+    color: '#2D3142',
+    fontSize: 16,
   },
   unitContainer: {
     flexDirection: 'row',
@@ -278,10 +324,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   unitInput: {
-    height: 40,
-    backgroundColor: 'lightgray',
-    borderRadius: 8,
+    height: 48,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E8E8F5',
     paddingHorizontal: 12,
+    color: '#2D3142',
+    fontSize: 16,
   },
   nameInput: {
     flex: 2,
@@ -301,5 +351,64 @@ const styles = StyleSheet.create({
   buttonContainer: {
     gap: 8,
     marginTop: 16,
+  },
+  carbInputRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  carbInputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E8E8F5',
+    paddingHorizontal: 12,
+    height: 56,
+  },
+  carbInputLabel: {
+    fontSize: 14,
+    color: '#8B8FA8',
+    marginHorizontal: 4,
+  },
+  carbInput: {
+    flex: 1,
+    fontSize: 18,
+    color: '#2D3142',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  saveButton: {
+    height: 56,
+    backgroundColor: '#6B7FD7',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#6B7FD7',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  cancelButton: {
+    height: 56,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#E8E8F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#8B8FA8',
+    fontSize: 18,
+    fontWeight: '600',
   },
 });

@@ -1,6 +1,6 @@
 import { getInsulinSettings, saveInsulinSettings } from "@/services/settingsService";
 import { useEffect, useState } from "react";
-import { Alert, Button, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 export default function Config() {
   const [carbsPerInsulin, setCarbsPerInsulin] = useState("");
@@ -112,9 +112,9 @@ export default function Config() {
         </Pressable>
       </View>
 
-      <View style={styles.buttonContainer}>
-        <Button title="Salvar" onPress={handleSave} color="lightgray" />
-      </View>
+      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+        <Text style={styles.saveButtonText}>Salvar</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "flex-start",
     alignItems: "center",
-    backgroundColor: "white",
+    backgroundColor: "#F5F6FA",
     padding: 24,
     paddingTop: 40,
   },
@@ -133,29 +133,30 @@ const styles = StyleSheet.create({
     height: 50,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'lightgray',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#E8E8F5',
   },
   incrementButtonSelected: {
-    borderColor: '#000',
-    borderWidth: 2,
+    borderColor: '#6B7FD7',
+    backgroundColor: '#F0F2FF',
   },
   incrementButtonText: {
-    color: '#666',
+    color: '#8B8FA8',
     fontSize: 14,
     textAlign: 'center',
     paddingHorizontal: 4,
   },
   incrementButtonTextSelected: {
-    color: '#000',
+    color: '#6B7FD7',
     fontWeight: 'bold',
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "bold",
     marginBottom: 24,
+    color: '#2D3142',
   },
   sectionTitle: {
     width: '90%',
@@ -163,34 +164,37 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginTop: 16,
     marginBottom: 16,
-    color: '#000',
+    color: '#2D3142',
   },
   input: {
     height: 50,
     width: '90%',
-    borderRadius: 10,
-    backgroundColor: 'lightgray',
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E8E8F5',
     paddingHorizontal: 12,
     marginBottom: 12,
     fontSize: 18,
+    color: '#2D3142',
   },
   inputLabel: {
     width: '90%',
     fontSize: 16,
     marginBottom: 8,
-    color: '#000',
+    color: '#2D3142',
   },
   sectionSubtitle: {
     width: '90%',
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#000',
+    color: '#2D3142',
     marginTop: 24,
   },
   description: {
     width: '90%',
     fontSize: 14,
-    color: '#666',
+    color: '#8B8FA8',
     marginTop: 4,
     marginBottom: 12,
   },
@@ -203,17 +207,20 @@ const styles = StyleSheet.create({
   carbsInput: {
     height: 50,
     flex: 1,
-    borderRadius: 10,
-    backgroundColor: 'lightgray',
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E8E8F5',
     paddingHorizontal: 12,
     fontSize: 18,
     marginRight: 8,
     textAlign: 'center',
+    color: '#2D3142',
   },
   unitText: {
     fontSize: 18,
     marginRight: 8,
-    color: '#666',
+    color: '#8B8FA8',
     width: 40,
   },
   incrementButtons: {
@@ -225,8 +232,23 @@ const styles = StyleSheet.create({
   buttonSpacer: {
     width: 8,
   },
-  buttonContainer: {
+  saveButton: {
     width: '90%',
+    height: 56,
+    backgroundColor: '#6B7FD7',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginTop: 24,
+    elevation: 5,
+    shadowColor: '#6B7FD7',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });

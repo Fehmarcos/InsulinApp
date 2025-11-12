@@ -2,7 +2,7 @@ import FoodSearch from "@/components/FoodSearch";
 import { Food, deleteFood, getAllFoods } from "@/services/mockFoodService";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, Button, StyleSheet, Text, View } from "react-native";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 export default function FoodList() {
   const [foods, setFoods] = useState<Food[]>([]);
@@ -82,11 +82,12 @@ export default function FoodList() {
       />
 
       <View style={styles.buttonContainer}>
-        <Button 
-          title="Adicionar Alimento" 
+        <TouchableOpacity 
+          style={styles.addButton}
           onPress={() => router.push('/foodForm')}
-          color="lightgray"
-        />
+        >
+          <Text style={styles.addButtonText}>+ Adicionar Alimento</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -95,17 +96,34 @@ export default function FoodList() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "white",
+    backgroundColor: "#F5F6FA",
     padding: 16,
     paddingTop: 40,
   },
   title: {
-    fontSize: 22,
-    fontWeight: "bold",
+    fontSize: 24,
+    fontWeight: "700",
     marginBottom: 16,
+    color: "#2D3142",
   },
   buttonContainer: {
     marginTop: 16,
     paddingBottom: 16,
+  },
+  addButton: {
+    backgroundColor: "#6B7FD7",
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: "center",
+    shadowColor: "#6B7FD7",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  addButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "700",
   },
 });
